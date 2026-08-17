@@ -11,10 +11,11 @@
     "skipLibCheck": true
   },
   "include": [
-    "node-shim.d.ts",
-    "pg-shim.d.ts",
-    "packages/**/*.ts",
-    "services/**/*.ts",
-    "tests/**/*.ts"
-  ]
+  "node-shim.d.ts",
+  "pg-shim.d.ts",
+  "packages/**/*.ts",
+  "services/**/*.ts",
+  "tests/**/*.ts",
+  "scripts/**/*.ts"
+]
 }
