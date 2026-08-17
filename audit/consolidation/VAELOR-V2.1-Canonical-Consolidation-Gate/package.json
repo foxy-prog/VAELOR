@@ -1,0 +1,19 @@
+{
+  "name": "vaelor-v2.1-integration-core",
+  "private": true,
+  "version": "0.4.0-canonical-candidate",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/services/core/src/runtime/main.js",
+    "test": "npm run build && node dist/tests/integration-smoke.test.js && node dist/tests/persistence-restart.test.js && node dist/tests/data-core-contract.test.js && node dist/tests/consistency-gate.test.js && node dist/tests/cognitive-core-gate.test.js",
+    "migrate": "node dist/scripts/migrate.js"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.9.2"
+  }
+}

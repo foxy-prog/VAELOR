@@ -1,0 +1,8 @@
+{
+  "name": "VÆLOR V2.1 Consistency + Recovery Gate",
+  "version": "0.4.0",
+  "purpose": "Harden the canonical production data boundary against concurrent writers, duplicate commits, and ambiguous durable state.",
+  "requires": ["VÆLOR V2.1 Production Data Core"],
+  "adds": ["optimistic state versioning", "serialized canonical commits", "commit idempotency", "durable checkpoint schema", "consistency contract tests"],
+  "does_not_claim": ["production disaster-recovery validation", "real PostgreSQL concurrency validation", "mission-critical certification"]
+}

@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: vaelor_test
+      POSTGRES_PASSWORD: vaelor_test
+      POSTGRES_DB: vaelor_validation
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vaelor_test -d vaelor_validation"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - vaelor_pg_validation:/var/lib/postgresql/data
+
+volumes:
+  vaelor_pg_validation:

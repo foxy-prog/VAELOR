@@ -1,0 +1,27 @@
+{
+  "system": "VÆLOR",
+  "version": "2.1",
+  "package": "integration-core",
+  "release": "0.2.0",
+  "status": "INTEGRATION_GATE_1_READY",
+  "externalAiProviderRequired": false,
+  "canonicalRuntime": "services/core/src/runtime/vaelor-runtime.ts",
+  "preservedSubsystems": [
+    "mission-kernel",
+    "agent-runtime",
+    "context-engine",
+    "memory",
+    "world-model",
+    "opportunity-engine",
+    "initiative-discovery",
+    "planning-engine",
+    "strategic-planner",
+    "tool-gateway",
+    "execution-engine",
+    "verification",
+    "recovery",
+    "learning",
+    "observability"
+  ],
+  "integrationInvariant": "No execution bypasses the Tool Gateway; no mission succeeds without verification; authority cannot be exceeded internally."
+}

@@ -1,0 +1,15 @@
+{
+  "name": "VÆLOR V2.1 Production Data Core",
+  "version": "0.4.0",
+  "status": "production-data-boundary-foundation",
+  "database": "PostgreSQL",
+  "canonicalState": ["missions", "mission_transitions", "memory", "world_entities", "world_relations", "traces", "trace_events"],
+  "runtimeEvents": true,
+  "transactionalCommits": true,
+  "migrations": true,
+  "healthChecks": true,
+  "driverBoundary": "SqlPool",
+  "externalAIRequired": false,
+  "productionClaims": false,
+  "nextGate": "concurrency-disaster-recovery-security-hardening"
+}
