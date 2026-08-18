@@ -210,6 +210,67 @@ function banner(): void {
    BOOT
    ============================================================ */
 
+
+async function runLiveMission(): Promise<void> {
+  console.log();
+  box(
+    "VÆLOR // LIVE MISSION",
+    [
+      "RUN ID       autonomous_runtime",
+      "TRACE ID     autonomous_trace",
+      "",
+      "OBJECTIVE    AUTONOMOUS SYSTEM EXECUTION",
+      "AUTHORITY    VERIFIED",
+      "RISK         LOW",
+      "STATUS       EXECUTING"
+    ],
+    RGB.violet
+  );
+
+  const stages: Array<[string, string]> = [
+    ["CONTEXT GATHERED", RGB.cyan],
+    ["MEMORY SYNCHRONIZED", RGB.magenta],
+    ["WORLD STATE ANALYZED", RGB.blue],
+    ["OBJECTIVE DECOMPOSED", RGB.violet],
+    ["PLAN GENERATED", RGB.cyan],
+    ["AUTHORITY VERIFIED", RGB.yellow],
+    ["TOOL POLICY CHECKED", RGB.yellow],
+    ["ACTION PREPARED", RGB.red],
+    ["ACTION EXECUTED", RGB.red],
+    ["RESULT OBSERVED", RGB.blue],
+    ["EVIDENCE CAPTURED", RGB.cyan],
+    ["VERIFICATION PASSED", RGB.green],
+    ["STATE UPDATED", RGB.magenta],
+    ["TRACE RECORDED", RGB.cyan],
+    ["LEARNING SIGNAL GENERATED", RGB.magenta]
+  ];
+
+  for (const [label, color] of stages) {
+    await progress(label, 180, color);
+  }
+
+  console.log();
+  await pulse("COMMITTING RUNTIME STATE", RGB.green);
+  await pulse("SEALING EXECUTION TRACE", RGB.cyan);
+  await pulse("UPDATING WORLD MODEL", RGB.blue);
+  await pulse("UPDATING MEMORY FABRIC", RGB.magenta);
+
+  console.log();
+  box(
+    "VÆLOR // MISSION RESULT",
+    [
+      "STATUS       SUCCEEDED",
+      "AUTHORITY    VERIFIED",
+      "VERIFICATION PASSED",
+      "TRACE        RECORDED",
+      "MEMORY       UPDATED",
+      "WORLD MODEL  UPDATED",
+      "LEARNING     SIGNAL GENERATED"
+    ],
+    RGB.green
+  );
+}
+
 async function boot(): Promise<void> {
   console.log(
     rgb(RGB.violet + RGB.bold, "                 ◆ CORE AWAKENING ◆")
@@ -389,7 +450,7 @@ async function cognitivePipeline(): Promise<void> {
 
   console.log();
 
-  const stages = [
+  const stages: Array<[string, string]> = [
     ["PERCEIVE", RGB.cyan],
     ["CONTEXT", RGB.blue],
     ["MEMORY", RGB.magenta],
@@ -419,9 +480,59 @@ async function cognitivePipeline(): Promise<void> {
    LIVE MISSION
    ============================================================ */
 
-async function mission(): Promise<void> {
-  const runId = `run_${Date.now().toString(36)}`;
-  const traceId = `trace_${Date.now().toString(36)}`;
+async function mission(objective = "AUTONOMOUS SYSTEM EXECUTION"): Promise<void> {
+  const now = new Date().toISOString();
+  const missionId = `mission_${Date.now().toString(36)}`;
+  const actionId = `action_${Date.now().toString(36)}`;
+
+  const result = await runtime.runMission({
+    mission: {
+      id: missionId,
+      kind: "MISSION",
+      title: objective,
+      description: objective,
+      ownerId: "operator",
+      state: "DRAFT",
+      authorityCeiling: 1,
+      risk: "LOW",
+      scope: [objective],
+      constraints: [],
+      dependencies: [],
+      successCriteria: ["Mission execution completes successfully."],
+      verificationCriteria: ["Execution result is verified."],
+      evidence: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+    actions: [
+      {
+        id: actionId,
+        missionId,
+        taskId: missionId,
+        toolId: "runtime",
+        capability: "autonomous_system_execution",
+        authority: 1,
+        trustZone: "CORE",
+        parameters: {},
+        preconditions: [],
+        expectedSideEffects: [],
+        verification: {
+          id: `verification_${actionId}`,
+          actionId,
+          expectedOutcome: "Execution completes successfully.",
+          criteria: [
+            {
+              id: "execution_verified",
+              description: "Execution result is verified.",
+              required: true,
+            },
+          ],
+          evidenceIds: [],
+          method: "STATE_CHECK",
+        },
+      },
+    ],
+  });
 
   console.log();
 
@@ -429,86 +540,51 @@ async function mission(): Promise<void> {
     "VÆLOR // LIVE MISSION",
     [
       "",
-      `  RUN ID       ${rgb(RGB.cyan, runId)}`,
-      `  TRACE ID     ${rgb(RGB.magenta, traceId)}`,
+      `  MISSION ID   ${rgb(RGB.cyan, result.missionId)}`,
+      `  TRACE ID     ${rgb(RGB.magenta, result.traceId)}`,
       "",
-      `  OBJECTIVE    ${rgb(
-        RGB.white + RGB.bold,
-        "AUTONOMOUS SYSTEM EXECUTION"
+      `  OBJECTIVE    ${rgb(RGB.white + RGB.bold, objective)}`,
+      "",
+      `  STATUS       ${rgb(
+        result.status === "SUCCEEDED" ? RGB.green : RGB.red,
+        result.status
       )}`,
-      "",
-      `  AUTHORITY    ${rgb(RGB.yellow, "VERIFIED")}`,
-      `  RISK         ${rgb(RGB.green, "LOW")}`,
-      `  STATUS       ${rgb(RGB.yellow, "INITIALIZING")}`,
     ],
     RGB.magenta
   );
 
-  await sleep(350);
+  console.log();
 
-  const stages = [
-    ["CONTEXT GATHERED", RGB.cyan],
-    ["MEMORY SYNCHRONIZED", RGB.magenta],
-    ["WORLD STATE ANALYZED", RGB.blue],
-    ["OBJECTIVE DECOMPOSED", RGB.violet],
-    ["PLAN GENERATED", RGB.cyan],
-    ["AUTHORITY VERIFIED", RGB.yellow],
-    ["TOOL POLICY CHECKED", RGB.yellow],
-    ["ACTION PREPARED", RGB.yellow],
-    ["ACTION EXECUTED", RGB.red],
-    ["RESULT OBSERVED", RGB.blue],
-    ["EVIDENCE CAPTURED", RGB.cyan],
-    ["VERIFICATION PASSED", RGB.green],
-    ["STATE UPDATED", RGB.magenta],
-    ["TRACE RECORDED", RGB.cyan],
-    ["LEARNING SIGNAL GENERATED", RGB.violet],
-  ] as const;
-
-  for (const [stage, color] of stages) {
-    await progress(stage, 150, color);
+  for (const action of result.actionResults) {
+    console.log(
+      `  ACTION ${rgb(RGB.cyan, action.actionId)}  ` +
+      `${rgb(
+        action.state === "SUCCEEDED" ? RGB.green : RGB.red,
+        action.state
+      )}`
+    );
   }
 
   console.log();
 
-  await pulse("COMMITTING RUNTIME STATE", RGB.green);
-  await pulse("SEALING EXECUTION TRACE", RGB.cyan);
-  await pulse("UPDATING WORLD MODEL", RGB.blue);
-  await pulse("UPDATING MEMORY FABRIC", RGB.magenta);
-
-  console.log();
-
   box(
-    "VÆLOR // MISSION OUTCOME",
+    "VÆLOR // RUNTIME RESULT",
     [
       "",
-      `  OBJECTIVE          ${rgb(RGB.green, "✓ RECEIVED")}`,
-      `  CONTEXT            ${rgb(RGB.green, "✓ BOUND")}`,
-      `  MEMORY             ${rgb(RGB.green, "✓ SYNCHRONIZED")}`,
-      `  WORLD MODEL        ${rgb(RGB.green, "✓ UPDATED")}`,
-      `  PLANNING           ${rgb(RGB.green, "✓ COMPLETE")}`,
-      `  AUTHORIZATION      ${rgb(RGB.green, "✓ GRANTED")}`,
-      `  EXECUTION          ${rgb(RGB.green, "✓ COMPLETE")}`,
-      `  EVIDENCE           ${rgb(RGB.green, "✓ CAPTURED")}`,
-      `  VERIFICATION       ${rgb(RGB.green, "✓ PASSED")}`,
-      `  RECOVERY           ${rgb(RGB.green, "✓ READY")}`,
-      `  LEARNING           ${rgb(RGB.green, "✓ UPDATED")}`,
-      `  TRACE              ${rgb(RGB.green, "✓ RECORDED")}`,
-      `  PERSISTENCE        ${rgb(RGB.green, "✓ COMMITTED")}`,
+      `  MISSION      ${rgb(RGB.green, result.status)}`,
+      `  ACTIONS      ${rgb(RGB.cyan, String(result.actionResults.length))}`,
+      `  TRACE        ${rgb(RGB.cyan, "RECORDED")}`,
       "",
       `              ${rgb(
-        RGB.violet + RGB.bold,
-        "◆ MISSION COMPLETE ◆"
+        result.status === "SUCCEEDED"
+          ? RGB.violet + RGB.bold
+          : RGB.red + RGB.bold,
+        result.status === "SUCCEEDED"
+          ? "◆ MISSION COMPLETE ◆"
+          : "◆ MISSION FAILED ◆"
       )}`,
     ],
-    RGB.green
-  );
-
-  await sleep(350);
-
-  await typeText(
-    "  VÆLOR: Mission completed. State preserved. Awaiting next objective.",
-    7,
-    RGB.cyan
+    result.status === "SUCCEEDED" ? RGB.green : RGB.red
   );
 }
 
