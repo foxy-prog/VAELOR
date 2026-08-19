@@ -12,4 +12,8 @@ export class ToolExecutorRegistry {
   get(toolId: string): RegisteredTool | undefined {
     return this.entries.get(toolId);
   }
+
+  listDefinitions(): ToolDefinition[] {
+    return Array.from(this.entries.values()).map(entry => entry.definition);
+  }
 }

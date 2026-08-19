@@ -509,8 +509,8 @@ async function mission(objective = "AUTONOMOUS SYSTEM EXECUTION"): Promise<void>
         id: actionId,
         missionId,
         taskId: missionId,
-        toolId: "runtime",
-        capability: "autonomous_system_execution",
+        toolId: "system_diagnostic",
+        capability: "system_diagnostics",
         authority: 1,
         trustZone: "CORE",
         parameters: {},
@@ -522,8 +522,8 @@ async function mission(objective = "AUTONOMOUS SYSTEM EXECUTION"): Promise<void>
           expectedOutcome: "Execution completes successfully.",
           criteria: [
             {
-              id: "execution_verified",
-              description: "Execution result is verified.",
+              id: "diagnostic_passed",
+              description: "System diagnostic passed.",
               required: true,
             },
           ],

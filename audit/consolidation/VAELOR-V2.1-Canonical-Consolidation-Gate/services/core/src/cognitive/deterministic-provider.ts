@@ -7,16 +7,24 @@ import type {
 export class DeterministicProvider implements InferenceProvider {
   async generate(request: CognitiveRequest): Promise<CognitiveResult> {
     const objective = request.objective;
+    const objectiveText =
+      `${objective.title} ${objective.description ?? ""} ${objective.scope.join(" ")}`
+        .toLowerCase();
 
     const actionTool =
-      request.availableTools?.find(tool =>
-        tool.capability.toLowerCase().includes("status")
-      ) ??
-      request.availableTools?.find(tool =>
-        tool.risk === "LOW"
-      );
+      request.availableTools?.find(tool => {
+        const capability = tool.capability.toLowerCase().replace(/_/g, " ");
+        const toolId = tool.id.toLowerCase().replace(/_/g, " ");
 
-    const toolId = actionTool?.id ?? "unassigned";
+        return (
+          objectiveText.includes(capability) ||
+          objectiveText.includes(toolId) ||
+          (objectiveText.includes("diagnostic") &&
+            capability.includes("diagnostic")) ||
+          (objectiveText.includes("system") &&
+            capability.includes("system"))
+        );
+      });
 
     const plan = {
       id: `plan_${Date.now()}`,

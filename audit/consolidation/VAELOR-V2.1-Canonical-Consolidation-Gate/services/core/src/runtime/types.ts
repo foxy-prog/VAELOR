@@ -17,7 +17,7 @@ export interface MissionAction extends ActionRequest {
 
 export interface MissionRunRequest {
   mission: MissionNode;
-  actions: MissionAction[];
+  actions?: MissionAction[];
   authorizationId?: string;
 }
 

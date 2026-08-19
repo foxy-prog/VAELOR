@@ -2,7 +2,7 @@ import type { MissionNode, MissionState, MissionTransition, WorkKind } from "../
 
 const transitions: Record<MissionState, MissionState[]> = {
   DRAFT: ["PLANNED", "CANCELLED"],
-  PLANNED: ["AUTHORIZED", "CANCELLED", "ESCALATED"],
+  PLANNED: ["AUTHORIZED", "CANCELLED"],
   AUTHORIZED: ["READY", "CANCELLED", "ESCALATED"],
   READY: ["RUNNING", "BLOCKED", "CANCELLED"],
   RUNNING: ["PAUSED", "BLOCKED", "VERIFYING", "FAILED", "ESCALATED"],

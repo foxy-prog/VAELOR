@@ -304,15 +304,6 @@ export class VaelorRuntime {
         runId,
         traceId
       );
-      this.transition(
-        mission.id,
-        "PLANNED",
-        runId,
-        traceId,
-        "Cognitive planning completed."
-      );
-
-
 
       this.emit({
         runId,
@@ -324,43 +315,25 @@ export class VaelorRuntime {
         references: [mission.id]
       });
 
+      const plannedCapabilities = new Set(
+        cognitiveResult.plan.nodes.flatMap(
+          node => node.requiredCapabilities
+        )
+      );
+
       const tools = this.executors.listDefinitions();
 
-      const explicitActions =
-        request.actions && request.actions.length > 0;
-
       const actions =
-        explicitActions
-          ? request.actions!
-          : this.actionMaterializer.materialize(
-              mission,
-              cognitiveResult.plan,
-              tools
-            );
+        request.actions ??
+        this.actionMaterializer.materialize(
+          mission,
+          cognitiveResult.plan,
+          tools
+        );
 
       const requestedCapabilities = new Set(
         actions.map(action => action.capability)
       );
-
-      const plannedCapabilities = new Set(
-        explicitActions
-          ? actions.map(action => action.capability)
-          : cognitiveResult.plan.nodes.flatMap(
-              node => node.requiredCapabilities
-            )
-      );
-
-      const unavailableCapabilities = [...requestedCapabilities].filter(
-        capability => !tools.some(
-          tool => tool.capability === capability
-        )
-      );
-
-      if (unavailableCapabilities.length > 0) {
-        throw new Error(
-          `Requested actions require unavailable capabilities: ${unavailableCapabilities.join(", ")}`
-        );
-      }
 
       const missingCapabilities = [...plannedCapabilities].filter(
         capability => !requestedCapabilities.has(capability)
@@ -413,30 +386,6 @@ export class VaelorRuntime {
       });
 
       
-      this.transition(
-        mission.id,
-        "AUTHORIZED",
-        runId,
-        traceId,
-        "Execution plan authorized by runtime governance."
-      );
-
-      this.transition(
-        mission.id,
-        "READY",
-        runId,
-        traceId,
-        "Mission is ready for execution."
-      );
-
-      this.transition(
-        mission.id,
-        "RUNNING",
-        runId,
-        traceId,
-        "Mission execution started."
-      );
-
       const actionResults: MissionRunResult["actionResults"] = [];
 
       for (const action of actions) {
@@ -918,9 +867,6 @@ export class VaelorRuntime {
         };
       }
 
-      console.error("\\n[VÆLOR DEBUG] RUN_FAILED:", message);
-      console.error("[VÆLOR DEBUG] mission:", mission.id);
-
       this.emit({
         runId,
         traceId,
@@ -962,49 +908,22 @@ export class VaelorRuntime {
     traceId: string,
     actorId: string
   ): void {
-    try {
-      this.missionKernel.transition(
-        id,
-        to,
-        actorId,
-        `Runtime transition: ${to}`
-      );
+    this.missionKernel.transition(
+      id,
+      to,
+      actorId,
+      `Runtime transition: ${to}`
+    );
 
-      this.emit({
-        runId,
-        traceId,
-        type: "EXECUTION_RESULT",
-        actor: actorId,
-        component: "mission-kernel",
-        summary: `Mission transitioned to ${to}.`,
-        references: [id],
-        metadata: { state: to }
-      });
-    } catch (error) {
-      console.error(
-        "[VÆLOR DEBUG] transition failed:",
-        error instanceof Error ? error.message : String(error)
-      );
-
-      if (to === "ESCALATED") {
-        this.emit({
-          runId,
-          traceId,
-          type: "RUN_ESCALATED",
-          actor: actorId,
-          component: "mission-kernel",
-          summary:
-            "Escalation requested but current mission state cannot transition to ESCALATED.",
-          references: [id],
-          metadata: {
-            requestedState: to,
-            currentState: this.missionKernel.get(id)?.state
-          }
-        });
-        return;
-      }
-
-      throw error;
-    }
+    this.emit({
+      runId,
+      traceId,
+      type: "EXECUTION_RESULT",
+      actor: actorId,
+      component: "mission-kernel",
+      summary: `Mission transitioned to ${to}.`,
+      references: [id],
+      metadata: { state: to }
+    });
   }
 }

@@ -19,7 +19,6 @@ import type { TraceEvent } from "../../../../packages/types/src/trace.js";
 import type { ToolRequest } from "../../../../packages/types/src/tools.js";
 import type { MissionState } from "../../../../packages/types/src/mission-kernel.js";
 import { ToolExecutorRegistry } from "./tool-executor-registry.js";
-import { ActionMaterializer } from "./action-materializer.js";
 import type { MissionRunRequest, MissionRunResult } from "./types.js";
 import { PersistentStateStore } from "../persistence/state-store.js";
 import { DurabilityError } from "../data/production-data-core.js";
@@ -65,7 +64,6 @@ export class VaelorRuntime {
   readonly strategy = new StrategicPlanner();
   readonly gateway = new ToolGateway();
   readonly executors = new ToolExecutorRegistry();
-  readonly actionMaterializer = new ActionMaterializer();
   readonly execution = new ExecutionEngine(this.gateway);
   readonly verification = new VerificationEngine();
   readonly recovery = new RecoveryEngine();
@@ -111,40 +109,6 @@ export class VaelorRuntime {
           execution_verified: true,
         },
         evidenceIds: [`evidence_runtime_${Date.now().toString(36)}`],
-      })
-    );
-
-    this.registerTool(
-      {
-        id: "system_diagnostic",
-        capability: "system_diagnostics",
-        inputSchema: {},
-        outputSchema: {
-          type: "object",
-          properties: {
-            status: { type: "string" },
-            healthy: { type: "boolean" },
-          },
-        },
-        risk: "LOW",
-        requiredAuthority: 1,
-        allowedTrustZones: ["CORE"],
-        sideEffect: "NONE",
-        verificationStrategy: "STATE_CHECK",
-        timeoutMs: 5000,
-        retryable: false,
-      },
-      async () => ({
-        result: {
-          status: "healthy",
-          healthy: true,
-        },
-        observed: {
-          diagnostic_passed: true,
-        },
-        evidenceIds: [
-          `evidence_diagnostic_${Date.now().toString(36)}`,
-        ],
       })
     );
   }
@@ -271,11 +235,6 @@ export class VaelorRuntime {
   ): Promise<MissionRunResult> {
     const { mission } = request;
 
-    const cognitiveResult = await this.cognitive.think(
-      mission,
-      this.executors.listDefinitions()
-    );
-
     const runId =
       `run_${Date.now()}_` +
       Math.random().toString(36).slice(2, 10);
@@ -304,15 +263,6 @@ export class VaelorRuntime {
         runId,
         traceId
       );
-      this.transition(
-        mission.id,
-        "PLANNED",
-        runId,
-        traceId,
-        "Cognitive planning completed."
-      );
-
-
 
       this.emit({
         runId,
@@ -324,101 +274,20 @@ export class VaelorRuntime {
         references: [mission.id]
       });
 
-      const tools = this.executors.listDefinitions();
-
-      const explicitActions =
-        request.actions && request.actions.length > 0;
-
-      const actions =
-        explicitActions
-          ? request.actions!
-          : this.actionMaterializer.materialize(
-              mission,
-              cognitiveResult.plan,
-              tools
-            );
-
-      const requestedCapabilities = new Set(
-        actions.map(action => action.capability)
-      );
-
-      const plannedCapabilities = new Set(
-        explicitActions
-          ? actions.map(action => action.capability)
-          : cognitiveResult.plan.nodes.flatMap(
-              node => node.requiredCapabilities
-            )
-      );
-
-      const unavailableCapabilities = [...requestedCapabilities].filter(
-        capability => !tools.some(
-          tool => tool.capability === capability
-        )
-      );
-
-      if (unavailableCapabilities.length > 0) {
-        throw new Error(
-          `Requested actions require unavailable capabilities: ${unavailableCapabilities.join(", ")}`
-        );
-      }
-
-      const missingCapabilities = [...plannedCapabilities].filter(
-        capability => !requestedCapabilities.has(capability)
-      );
-
-      if (missingCapabilities.length > 0) {
-        this.emit({
-          runId,
-          traceId,
-          type: "AUTHORIZATION_DENIED",
-          actor: "vaelor.core",
-          component: "planning",
-          summary:
-            `Plan alignment failed. Missing capabilities: ${missingCapabilities.join(", ")}.`,
-          references: [mission.id]
-        });
-
-        this.transition(
-          mission.id,
-          "ESCALATED",
-          runId,
-          traceId,
-          "Cognitive plan requirements are not satisfied by requested actions."
-        );
-
-        this.trace.complete(traceId, "ESCALATED");
-
-        await this.persist(
-          "plan_alignment_failed",
-          runId,
-          traceId
-        );
-
-        return {
-          missionId: mission.id,
-          status: "ESCALATED",
-          actionResults: [],
-          traceId
-        };
-      }
-
-      this.emit({
+      this.transition(
+        mission.id,
+        "PLANNED",
         runId,
         traceId,
-        type: "POLICY_CHECKED",
-        actor: "vaelor.core",
-        component: "planning",
-        summary: "Cognitive plan aligned with requested execution capabilities.",
-        references: [mission.id]
-      });
+        "runtime"
+      );
 
-      
       this.transition(
         mission.id,
         "AUTHORIZED",
         runId,
         traceId,
-        "Execution plan authorized by runtime governance."
+        "runtime"
       );
 
       this.transition(
@@ -426,7 +295,7 @@ export class VaelorRuntime {
         "READY",
         runId,
         traceId,
-        "Mission is ready for execution."
+        "runtime"
       );
 
       this.transition(
@@ -434,12 +303,12 @@ export class VaelorRuntime {
         "RUNNING",
         runId,
         traceId,
-        "Mission execution started."
+        "runtime"
       );
 
       const actionResults: MissionRunResult["actionResults"] = [];
 
-      for (const action of actions) {
+      for (const action of request.actions) {
         const tool = this.executors.get(action.toolId);
 
         if (!tool) {
@@ -918,9 +787,6 @@ export class VaelorRuntime {
         };
       }
 
-      console.error("\\n[VÆLOR DEBUG] RUN_FAILED:", message);
-      console.error("[VÆLOR DEBUG] mission:", mission.id);
-
       this.emit({
         runId,
         traceId,
@@ -962,49 +828,22 @@ export class VaelorRuntime {
     traceId: string,
     actorId: string
   ): void {
-    try {
-      this.missionKernel.transition(
-        id,
-        to,
-        actorId,
-        `Runtime transition: ${to}`
-      );
+    this.missionKernel.transition(
+      id,
+      to,
+      actorId,
+      `Runtime transition: ${to}`
+    );
 
-      this.emit({
-        runId,
-        traceId,
-        type: "EXECUTION_RESULT",
-        actor: actorId,
-        component: "mission-kernel",
-        summary: `Mission transitioned to ${to}.`,
-        references: [id],
-        metadata: { state: to }
-      });
-    } catch (error) {
-      console.error(
-        "[VÆLOR DEBUG] transition failed:",
-        error instanceof Error ? error.message : String(error)
-      );
-
-      if (to === "ESCALATED") {
-        this.emit({
-          runId,
-          traceId,
-          type: "RUN_ESCALATED",
-          actor: actorId,
-          component: "mission-kernel",
-          summary:
-            "Escalation requested but current mission state cannot transition to ESCALATED.",
-          references: [id],
-          metadata: {
-            requestedState: to,
-            currentState: this.missionKernel.get(id)?.state
-          }
-        });
-        return;
-      }
-
-      throw error;
-    }
+    this.emit({
+      runId,
+      traceId,
+      type: "EXECUTION_RESULT",
+      actor: actorId,
+      component: "mission-kernel",
+      summary: `Mission transitioned to ${to}.`,
+      references: [id],
+      metadata: { state: to }
+    });
   }
 }
