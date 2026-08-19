@@ -54,7 +54,10 @@ export class CognitiveCommandRouter {
       return this.command("DEMO", raw, 0.99);
     }
 
-    if (/\b(clear|clean)\b.*\b(screen|terminal)\b/.test(text) || text === "clear") {
+    if (
+      /\b(clear|clean)\b.*\b(screen|terminal)\b/.test(text) ||
+      text === "clear"
+    ) {
       return this.command("CLEAR", raw, 0.99);
     }
 
@@ -62,7 +65,9 @@ export class CognitiveCommandRouter {
       return this.command("HELP", raw, 0.99);
     }
 
-    if (/\b(exit|quit|shutdown|shut down|terminate|stop vaelor)\b/.test(text)) {
+    if (
+      /\b(exit|quit|shutdown|shut down|terminate|stop vaelor)\b/.test(text)
+    ) {
       return this.command("EXIT", raw, 0.99);
     }
 
@@ -73,25 +78,68 @@ export class CognitiveCommandRouter {
     raw: string,
     text: string,
   ): Record<string, string> {
-    const parameters: Record<string, string> = {};
+    const parameters: Record<string, string> = {
+      priority: "NORMAL",
+      executionMode: "STANDARD",
+      verification: "optional",
+    };
 
+    // Target extraction.
     const target =
-      raw.match(/(?:on|at|for|against|target(?:ing)?)\s+([A-Za-z0-9._-]+)/i)?.[1];
+      raw.match(
+        /(?:on|at|for|against|target(?:ing)?)\s+([A-Za-z0-9._-]+)/i,
+      )?.[1];
 
     if (target) {
       parameters.target = target;
     }
 
+    // Objective extraction.
     if (/\breconnaissance\b|\brecon\b/i.test(text)) {
       parameters.objective = "reconnaissance";
-    } else if (/\banalys(?:e|is|ing)\b|\banalyze\b/i.test(text)) {
+    } else if (
+      /\banalys(?:e|is|ing)\b|\banalyze\b|\banalysis\b/i.test(text)
+    ) {
       parameters.objective = "analysis";
     } else if (/\binspect\b|\binspection\b/i.test(text)) {
       parameters.objective = "inspection";
+    } else if (/\bpatrol\b|\bpatrolling\b/i.test(text)) {
+      parameters.objective = "patrol";
+    } else if (/\bsearch\b|\bsearching\b/i.test(text)) {
+      parameters.objective = "search";
     }
 
-    if (/\bverify\b|\bverification\b|\bvalidate\b/i.test(text)) {
+    // Verification requirement.
+    if (
+      /\bverify\b|\bverification\b|\bvalidate\b|\bvalidated\b|\bconfirm\b/.test(
+        text,
+      )
+    ) {
       parameters.verification = "required";
+    }
+
+    // Priority.
+    if (/\bcritical\b|\bemergency\b|\burgent\b/.test(text)) {
+      parameters.priority = "CRITICAL";
+    } else if (/\bhigh priority\b|\bhigh-priority\b|\bimmediately\b/.test(text)) {
+      parameters.priority = "HIGH";
+    } else if (/\blow priority\b|\blow-priority\b/.test(text)) {
+      parameters.priority = "LOW";
+    }
+
+    // Execution mode.
+    if (
+      /\bcautious\b|\bcareful\b|\bconservative\b|\bmanual oversight\b/.test(
+        text,
+      )
+    ) {
+      parameters.executionMode = "CAUTIOUS";
+    } else if (
+      /\bautonomous\b|\bfully autonomous\b|\bwithout intervention\b/.test(
+        text,
+      )
+    ) {
+      parameters.executionMode = "AUTONOMOUS";
     }
 
     return parameters;
