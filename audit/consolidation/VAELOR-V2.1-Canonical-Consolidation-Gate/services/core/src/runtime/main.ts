@@ -1,7 +1,9 @@
 import { createInterface } from "node:readline";
 import { VaelorRuntime } from "./vaelor-runtime.js";
+import { CognitiveCommandRouter } from "./cognitive/command-router.js";
 
 const runtime = new VaelorRuntime();
+const commandRouter = new CognitiveCommandRouter();
 
 /* ============================================================
    RGB PALETTE — STRICTLY RGB
@@ -12,14 +14,14 @@ const RGB = {
   bold: "\x1b[1m",
   dim: "\x1b[2m",
 
-  red: "\x1b[38;2;255;70;70m",
-  green: "\x1b[38;2;60;255;150m",
-  blue: "\x1b[38;2;80;150;255m",
-  cyan: "\x1b[38;2;0;230;255m",
-  magenta: "\x1b[38;2;255;60;220m",
-  violet: "\x1b[38;2;160;80;255m",
-  yellow: "\x1b[38;2;255;220;60m",
-  white: "\x1b[38;2;245;245;255m",
+  red: "\x1b[38;2;180;35;35m",
+  green: "\x1b[38;2;125;150;95m",
+  blue: "\x1b[38;2;95;115;125m",
+  cyan: "\x1b[38;2;135;155;150m",
+  magenta: "\x1b[38;2;105;120;105m",
+  violet: "\x1b[38;2;120;130;110m",
+  yellow: "\x1b[38;2;190;165;75m",
+  white: "\x1b[38;2;220;225;215m",
 } as const;
 
 const rgb = (color: string, text: string): string =>
@@ -1059,6 +1061,7 @@ function createCLI(): ReturnType<typeof createInterface> {
 }
 
 
+
 async function commandLoop(): Promise<void> {
   const cli = createCLI();
 
@@ -1090,7 +1093,9 @@ async function commandLoop(): Promise<void> {
   cli.prompt();
 
   cli.on("line", async (raw: string) => {
-    const command = raw.trim().toLowerCase();
+    const input = raw.trim();
+    const cognitiveCommand = commandRouter.route(input);
+    const command = cognitiveCommand.intent.toLowerCase();
 
     try {
       switch (command) {
