@@ -20,6 +20,7 @@ export interface CognitiveCommand {
 export class CognitiveCommandRouter {
   route(raw: string): CognitiveCommand {
     const text = raw.trim().toLowerCase();
+    const parameters = this.extractParameters(raw, text);
 
     if (!text) {
       return this.unknown(raw);
@@ -33,7 +34,7 @@ export class CognitiveCommandRouter {
       /\b(run|start|execute|launch|begin)\b.*\b(mission|objective|operation)\b/.test(text) ||
       /\bmission\b/.test(text)
     ) {
-      return this.command("MISSION", raw, 0.96, true);
+      return this.command("MISSION", raw, 0.96, true, parameters);
     }
 
     if (
@@ -68,17 +69,46 @@ export class CognitiveCommandRouter {
     return this.unknown(raw);
   }
 
+  private extractParameters(
+    raw: string,
+    text: string,
+  ): Record<string, string> {
+    const parameters: Record<string, string> = {};
+
+    const target =
+      raw.match(/(?:on|at|for|against|target(?:ing)?)\s+([A-Za-z0-9._-]+)/i)?.[1];
+
+    if (target) {
+      parameters.target = target;
+    }
+
+    if (/\breconnaissance\b|\brecon\b/i.test(text)) {
+      parameters.objective = "reconnaissance";
+    } else if (/\banalys(?:e|is|ing)\b|\banalyze\b/i.test(text)) {
+      parameters.objective = "analysis";
+    } else if (/\binspect\b|\binspection\b/i.test(text)) {
+      parameters.objective = "inspection";
+    }
+
+    if (/\bverify\b|\bverification\b|\bvalidate\b/i.test(text)) {
+      parameters.verification = "required";
+    }
+
+    return parameters;
+  }
+
   private command(
     intent: CommandIntent,
     raw: string,
     confidence: number,
     requiresAuthorization = false,
+    parameters: Record<string, string> = {},
   ): CognitiveCommand {
     return {
       intent,
       raw,
       confidence,
-      parameters: {},
+      parameters,
       requiresAuthorization,
     };
   }
