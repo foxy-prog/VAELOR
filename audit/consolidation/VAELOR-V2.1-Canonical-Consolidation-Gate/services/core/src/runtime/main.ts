@@ -482,26 +482,55 @@ async function cognitivePipeline(): Promise<void> {
    LIVE MISSION
    ============================================================ */
 
-async function mission(objective = "AUTONOMOUS SYSTEM EXECUTION"): Promise<void> {
+async function mission(
+  objective = "AUTONOMOUS SYSTEM EXECUTION",
+  parameters: Record<string, string> = {},
+): Promise<void> {
   const now = new Date().toISOString();
   const missionId = `mission_${Date.now().toString(36)}`;
   const actionId = `action_${Date.now().toString(36)}`;
+
+  const target = parameters.target ?? "unspecified";
+  const missionObjective = parameters.objective ?? objective;
+  const priority = parameters.priority ?? "NORMAL";
+  const executionMode = parameters.executionMode ?? "STANDARD";
+  const verification = parameters.verification ?? "optional";
+
+  const missionTitle =
+    target !== "unspecified"
+      ? `${missionObjective} mission on ${target}`
+      : missionObjective;
 
   const result = await runtime.runMission({
     mission: {
       id: missionId,
       kind: "MISSION",
-      title: objective,
-      description: objective,
+      title: missionTitle,
+      description: missionTitle,
       ownerId: "operator",
       state: "DRAFT",
-      authorityCeiling: 1,
-      risk: "LOW",
-      scope: [objective],
-      constraints: [],
+      authorityCeiling: priority === "CRITICAL" ? 2 : 1,
+      risk: priority === "CRITICAL" ? "HIGH" : "LOW",
+      scope: [
+        missionObjective,
+        ...(target !== "unspecified" ? [`TARGET:${target}`] : []),
+      ],
+      constraints: [
+        `PRIORITY:${priority}`,
+        `EXECUTION_MODE:${executionMode}`,
+      ],
       dependencies: [],
-      successCriteria: ["Mission execution completes successfully."],
-      verificationCriteria: ["Execution result is verified."],
+      successCriteria: [
+        "Mission execution completes successfully.",
+        ...(verification === "required"
+          ? ["Execution result is verified."]
+          : []),
+      ],
+      verificationCriteria: [
+        ...(verification === "required"
+          ? ["Execution result is verified."]
+          : ["Execution result is observed."]),
+      ],
       evidence: [],
       createdAt: now,
       updatedAt: now,
@@ -513,21 +542,39 @@ async function mission(objective = "AUTONOMOUS SYSTEM EXECUTION"): Promise<void>
         taskId: missionId,
         toolId: "system_diagnostic",
         capability: "system_diagnostics",
-        authority: 1,
+        authority: priority === "CRITICAL" ? 2 : 1,
         trustZone: "CORE",
-        parameters: {},
+        parameters: {
+          target,
+          objective: missionObjective,
+          priority,
+          executionMode,
+          verification,
+        },
         preconditions: [],
         expectedSideEffects: [],
         verification: {
           id: `verification_${actionId}`,
           actionId,
-          expectedOutcome: "Execution completes successfully.",
+          expectedOutcome:
+            verification === "required"
+              ? "Execution completes successfully and verification passes."
+              : "Execution completes successfully.",
           criteria: [
             {
               id: "diagnostic_passed",
               description: "System diagnostic passed.",
               required: true,
             },
+            ...(verification === "required"
+              ? [
+                  {
+                    id: "result_verified",
+                    description: "Mission result was verified.",
+                    required: true,
+                  },
+                ]
+              : []),
           ],
           evidenceIds: [],
           method: "STATE_CHECK",
@@ -545,7 +592,11 @@ async function mission(objective = "AUTONOMOUS SYSTEM EXECUTION"): Promise<void>
       `  MISSION ID   ${rgb(RGB.cyan, result.missionId)}`,
       `  TRACE ID     ${rgb(RGB.magenta, result.traceId)}`,
       "",
-      `  OBJECTIVE    ${rgb(RGB.white + RGB.bold, objective)}`,
+      `  OBJECTIVE    ${rgb(RGB.white + RGB.bold, missionObjective)}`,
+      `  TARGET       ${rgb(RGB.cyan, target)}`,
+      `  PRIORITY     ${rgb(RGB.yellow, priority)}`,
+      `  MODE         ${rgb(RGB.blue, executionMode)}`,
+      `  VERIFY       ${rgb(RGB.green, verification.toUpperCase())}`,
       "",
       `  STATUS       ${rgb(
         result.status === "SUCCEEDED" ? RGB.green : RGB.red,
@@ -560,10 +611,10 @@ async function mission(objective = "AUTONOMOUS SYSTEM EXECUTION"): Promise<void>
   for (const action of result.actionResults) {
     console.log(
       `  ACTION ${rgb(RGB.cyan, action.actionId)}  ` +
-      `${rgb(
-        action.state === "SUCCEEDED" ? RGB.green : RGB.red,
-        action.state
-      )}`
+        `${rgb(
+          action.state === "SUCCEEDED" ? RGB.green : RGB.red,
+          action.state
+        )}`
     );
   }
 
@@ -580,10 +631,14 @@ async function mission(objective = "AUTONOMOUS SYSTEM EXECUTION"): Promise<void>
       `              ${rgb(
         result.status === "SUCCEEDED"
           ? RGB.violet + RGB.bold
-          : RGB.red + RGB.bold,
+          : result.status === "PARTIAL"
+            ? RGB.yellow + RGB.bold
+            : RGB.red + RGB.bold,
         result.status === "SUCCEEDED"
           ? "◆ MISSION COMPLETE ◆"
-          : "◆ MISSION FAILED ◆"
+          : result.status === "PARTIAL"
+            ? "◆ PARTIAL VERIFICATION ◆"
+            : "◆ MISSION FAILED ◆"
       )}`,
     ],
     result.status === "SUCCEEDED" ? RGB.green : RGB.red
@@ -1103,9 +1158,17 @@ async function commandLoop(): Promise<void> {
           status();
           break;
 
-        case "mission":
-          await mission();
-          break;
+        case "mission": {
+                                                    const missionObjective =
+                                                      cognitiveCommand.parameters.objective ??
+                                                      "AUTONOMOUS SYSTEM EXECUTION";
+
+                                                    await mission(
+                                                      missionObjective,
+                                                      cognitiveCommand.parameters,
+                                                    );
+                                                    break;
+                                                  }
 
         case "architecture":
           architecture();

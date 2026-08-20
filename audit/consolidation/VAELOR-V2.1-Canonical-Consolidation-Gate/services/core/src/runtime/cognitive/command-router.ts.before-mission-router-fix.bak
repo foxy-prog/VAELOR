@@ -31,10 +31,7 @@ export class CognitiveCommandRouter {
     }
 
     if (
-      (
-        /\b(run|start|execute|launch|begin)\b/.test(text) &&
-        /\b(reconnaissance|recon|analy[sz]e|analysis|inspect|inspection|patrol|patrolling|search|searching)\b/.test(text)
-      ) ||
+      /\b(run|start|execute|launch|begin)\b.*\b(mission|objective|operation)\b/.test(text) ||
       /\bmission\b/.test(text)
     ) {
       return this.command("MISSION", raw, 0.96, true, parameters);

@@ -747,92 +747,41 @@ export class VaelorRuntime {
           }
 
           if (verification.status === "PARTIAL") {
-          this.emit({
-            runId,
-            traceId,
-            type: "RECOVERY_STARTED",
-            actor: "vaelor.core",
-            component: "recovery",
-            summary:
-              "Verification was partial; recovery/replanning required.",
-            references: [
-              action.id,
-              ...verification.failedCriteria,
-            ],
-          });
-
-          this.transition(
-            mission.id,
-            "VERIFYING",
-            runId,
-            traceId,
-            "Partial verification requires additional verification before completion.",
-          );
-
-          const recovery = this.recovery.next(
-            this.recovery.classify(
-              action.id,
-              "PARTIAL_VERIFICATION",
-            ),
-            {
-              retrySafe: tool.definition.retryable,
-              alternativeAvailable: false,
-              rollbackAvailable:
-                tool.definition.sideEffect === "REVERSIBLE",
-            },
-          );
-
-          if (recovery.state === "ESCALATE") {
             this.transition(
               mission.id,
-              "ESCALATED",
+              "VERIFYING",
               runId,
               traceId,
-              recovery.rationale,
+              "Mission action entered verification with partial criteria satisfaction."
+            );
+
+            this.transition(
+              mission.id,
+              "PARTIAL",
+              runId,
+              traceId,
+              "Mission action partially satisfied verification criteria."
             );
 
             this.trace.complete(
               traceId,
-              "ESCALATED",
+              "FAILED"
             );
 
             await this.persist(
-              "partial_verification_escalation",
+              "partial_verification",
               runId,
-              traceId,
+              traceId
             );
 
             return {
               missionId: mission.id,
-              status: "ESCALATED",
+              status: "PARTIAL",
               actionResults,
-              traceId,
+              traceId
             };
           }
-
-          this.transition(
-            mission.id,
-            "PARTIAL",
-            runId,
-            traceId,
-            verification.rationale,
-          );
-
-          await this.persist(
-            "partial_verification_pending",
-            runId,
-            traceId,
-          );
-
-          return {
-            missionId: mission.id,
-            status: "PARTIAL",
-            actionResults,
-            traceId,
-          };
-        }
-
-      } catch (error) {
+        } catch (error) {
           const message =
             error instanceof Error
               ? error.message
